@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-
+import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped
 from styx_msgs.msg import Lane, Waypoint
+from scipy.spatial import KDTree
+
 
 import math
 
@@ -38,14 +40,100 @@ class WaypointUpdater(object):
 
         # TODO: Add other member variables you need below
 
-        rospy.spin()
+        self.pose =None
+        self.base_waypoints = None
+        self.waypoints_2d = None
+        self.waypoint_tree = None
+
+        #rospy.spin()
+        self.loop()
+
+    def loop(self):
+        rate=rospy.Rate(50)# 50hz, change to 30 for later
+        while not rospy.is_shutdown():
+            if self.pose and self.base_waypoints:
+                #Get closest waypoint
+                closest_waypoint_idx = self.get_closest_waypoint_idx()
+                self.publish_waypoints(closest_waypoint_idx)
+            rate.sleep()
+
+
+    def get_closest_waypoint_idx(self):
+        x=self.pose.pose.position.x
+        y=self.pose.pose.position.y
+        closest_idx = self.waypoint_tree.query([x,y],1)[1]
+
+        #check if closeset is ahed or behind vehicle
+        closest_coord = self.waypoints_2d[closest_idx]
+        prev_coord = self.waypoints_2d[closest_idx-1]
+
+        #equation for hyperplane through closest_coord
+        # change the list to vect
+        cl_vect = np.array(closest_coord)
+        prev_vect = np.array(prev_coord)
+        pos_vect = np.array([x,y])
+
+        val = np.dot(cl_vect - prev_vect, pos_vect - cl_vect)
+
+        if val > 0:#car current pose is ahead the closest pot
+            closest_idx = (closest_idx +1) % len(self.waypoints_2d)
+
+        return closest_idx
+
+    def publish_waypoints(self,closest_idx):
+        lane = Lane()#create a new lane msg
+        #header is not important, optinonal
+        lane.header = self.base_waypoints.header
+        lane.waypoints = self.base_waypoints.waypoints[closest_idx: closest_idx + LOOKAHEAD_WPS]
+        self.final_waypoints_pub.publish(lane)
 
     def pose_cb(self, msg):
         # TODO: Implement
+        # be called frequencetly, save the current position
+        self.pose = msg
         pass
 
-    def waypoints_cb(self, waypoints):
+    def waypoints_cb(self, waypoints_in):
         # TODO: Implement
+        # get base waypoints every frame/time
+        # although it
+        self.base_waypoints = waypoints_in
+        #if we don't have waypoints_2d, create one
+        if not self.waypoints_2d:
+            #save the whole base_waypoint to KD_tree
+            '''
+            check the command
+
+            msg: Lane
+            Header header
+            Waypoint[] waypoints
+            msg: waypoints
+            geometry_msgs/PoseStamped pose
+            geometry_msgs/TwistStamped twist
+
+            msg: pose
+            rosmsg info geometry_msgs/PoseStamped
+            std_msgs/Header header
+              uint32 seq
+              time stamp
+              string frame_id
+            geometry_msgs/Pose pose
+              geometry_msgs/Point position
+                float64 x
+                float64 y
+                float64 z
+              geometry_msgs/Quaternion orientation
+                float64 x
+                float64 y
+                float64 z
+                float64 w
+
+            '''
+            self.waypoints_2d = [[waypoint.pose.pose.position.x, waypoint.pose.pose.position.y] for waypoint in waypoints_in.waypoints]
+            #find the closetest point to the car with KD_tree later. log(n)
+            self.waypoint_tree = KDTree(self.waypoints_2d)
+
+
         pass
 
     def traffic_cb(self, msg):
