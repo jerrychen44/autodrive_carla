@@ -1,7 +1,13 @@
+import rospy
+
 
 MIN_NUM = float('-inf')
 MAX_NUM = float('inf')
 
+'''
+A generic PID controller that can be used in twist_controller.py.
+
+'''
 
 class PID(object):
     def __init__(self, kp, ki, kd, mn=MIN_NUM, mx=MAX_NUM):
@@ -31,4 +37,6 @@ class PID(object):
             self.int_val = integral
         self.last_error = error
 
+        rospy.logwarn("Throttle: {0}".format(val) )
+        rospy.logwarn("Velocity error: {0}".format(error) )
         return val

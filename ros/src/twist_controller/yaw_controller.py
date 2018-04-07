@@ -1,5 +1,8 @@
 from math import atan
+'''
+A controller that can be used to convert target linear and angular velocity to steering commands.
 
+'''
 class YawController(object):
     def __init__(self, wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle):
         self.wheel_base = wheel_base

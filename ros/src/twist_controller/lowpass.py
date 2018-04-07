@@ -1,4 +1,7 @@
+'''
+A generic low pass filter that can be used in lowpass.py.
 
+'''
 class LowPassFilter(object):
     def __init__(self, tau, ts):
         self.a = 1. / (tau / ts + 1.)
