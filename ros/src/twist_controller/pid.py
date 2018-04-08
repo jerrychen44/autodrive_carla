@@ -37,6 +37,6 @@ class PID(object):
             self.int_val = integral
         self.last_error = error
 
-        rospy.logwarn("Throttle: {0}".format(val) )
-        rospy.logwarn("Velocity error: {0}".format(error) )
+        #rospy.logwarn("PID Throttle: {0}".format(val) )
+        #rospy.logwarn("PID Velocity error: {0}".format(error) )
         return val
