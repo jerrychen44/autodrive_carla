@@ -53,6 +53,15 @@ class TLDetector(object):
         self.camera_image = None
         self.lights = []
 
+        self.state = TrafficLight.UNKNOWN
+        self.last_state = TrafficLight.UNKNOWN
+        self.last_wp = -1
+        self.state_count = 0
+
+        self.waypoints_2d = None
+        self.waypoint_tree = None
+
+
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)#can be used to determine the vehicle's location.
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)#provides the complete list of waypoints.
 
@@ -91,19 +100,13 @@ class TLDetector(object):
         self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
 
-        self.state = TrafficLight.UNKNOWN
-        self.last_state = TrafficLight.UNKNOWN
-        self.last_wp = -1
-        self.state_count = 0
 
-        self.waypoints_2d = None
-        self.waypoint_tree = None
 
         rospy.spin()
 
     def pose_cb(self, msg):
         #current car position
-        rospy.logwarn("dl_detector pose_cb")
+        #rospy.logwarn("dl_detector pose_cb")
 
         self.pose = msg
 
@@ -201,9 +204,10 @@ class TLDetector(object):
         uint8 YELLOW=1
         uint8 RED=0
         '''
-
+        light_status=["RED","YELLOW","GREEN","UNKNOWN","UNKNOWN"]
         #for simulator testing, just return the light state simulator pass to you directly
-        rospy.logwarn("get_light_state: {0}".format(light.state))
+        rospy.logwarn("get_light_state: {0}".format(light_status[light.state]))
+
 
         return light.state
 
@@ -258,8 +262,8 @@ class TLDetector(object):
                 closest_light = light
                 line_wp_idx = temp_wp_idx
 
-            rospy.logwarn("finial diff: {0}".format(diff))
-            rospy.logwarn("finial line_wp_idx: {0}".format(line_wp_idx))
+            #rospy.logwarn("finial diff: {0}".format(diff))
+            #rospy.logwarn("finial line_wp_idx: {0}".format(line_wp_idx))
 
 
         if closest_light:

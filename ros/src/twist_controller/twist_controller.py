@@ -62,6 +62,7 @@ class Controller(object):
     # this fun will be call 50Hz, from dbw_node
     def control(self,
                 current_vel,
+                curr_ang_vel,
                 dbw_enabled,
                 linear_vel,
                 angular_vel
@@ -85,12 +86,29 @@ class Controller(object):
         # rospy.logwarn("Angular vel: {0}".format(angular_vel))
         rospy.logwarn("Target vel: {0}".format(linear_vel))
         rospy.logwarn("Target angular: {0}\n".format(angular_vel))
-        rospy.logwarn("current vel: {0}".format(current_vel))
+
+        rospy.logwarn("current_vel: {0}".format(current_vel))
+        rospy.logwarn("curr_ang_vel: {0}".format(curr_ang_vel))
+
         rospy.logwarn("filtered vel: {0}".format(self.vel_lpf.get()))
         rospy.logwarn("dbw_enabled: {0}".format(dbw_enabled))
 
         #use Yaw controller to get the steering
         steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
+        #rospy.logwarn("steering: {0}\n".format(steering))
+
+        #handle the ang error too large
+        ang_error = 0
+        if angular_vel != 0:
+            ang_error = abs((angular_vel - curr_ang_vel))
+            rospy.logwarn("ang_error: {0}".format(ang_error))
+
+        if ang_error < 0.05:
+            rospy.logwarn("================================> ANG THE SAME, keep use ths ame steering")
+        else:
+            rospy.logwarn("================================> ANG NOT THE SAME, use steering * 1.25")
+            steering = steering * 1.25
+
 
         #get the vel diff erro between the the vel we want to be (linear_vel) v.s. the current_vel
         # the linear_vel comes from twist_cmd, which is the waypoint_follower published, is the target vel
