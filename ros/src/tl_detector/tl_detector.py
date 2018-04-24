@@ -61,6 +61,11 @@ class TLDetector(object):
         self.waypoints_2d = None
         self.waypoint_tree = None
 
+        self.bridge = CvBridge()
+        self.light_classifier = TLClassifier()
+        self.listener = tf.TransformListener()
+
+        self.tmp = 0
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)#can be used to determine the vehicle's location.
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)#provides the complete list of waypoints.
@@ -96,9 +101,7 @@ class TLDetector(object):
         '''
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
-        self.bridge = CvBridge()
-        self.light_classifier = TLClassifier()
-        self.listener = tf.TransformListener()
+
 
 
 
@@ -204,25 +207,34 @@ class TLDetector(object):
         uint8 YELLOW=1
         uint8 RED=0
         '''
-        light_status=["RED","YELLOW","GREEN","UNKNOWN","UNKNOWN"]
-        #for simulator testing, just return the light state simulator pass to you directly
-        rospy.logwarn("get_light_state: {0}".format(light_status[light.state]))
+        use_light_status = 0
+        light_status=["RED","YELLOW","GREEN","UNKNOWN3","UNKNOWN4"]
+
+        if use_light_status ==1:
+            #for simulator testing, just return the light state simulator pass to you directly
+            rospy.logwarn("[light_status,Highway track] get_light_state: {0}".format(light_status[light.state]))
 
 
-        return light.state
+            return light.state
+        else:
+
+            #####################
+            # mark first, for real car, we need a classification
+            ####################
+            if(not self.has_image):
+                self.prev_light_loc = None
+                return False
+            #raw data to RGB8bit
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
 
-        #####################
-        # mark first, for real car, we need a classification
-        ####################
-        #if(not self.has_image):
-        #    self.prev_light_loc = None
-        #    return False
-        ##raw data to RGB8bit
-        #cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
-        #Get classification
-        #return self.light_classifier.get_classification(cv_image)
+            state = self.light_classifier.get_classification(cv_image)
+
+
+            #Get classification
+            rospy.logwarn("[has_image,Highway track] get_light_state: {0}".format(light_status[state]))
+            return state
 
 
     def process_traffic_lights(self):

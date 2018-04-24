@@ -7,6 +7,7 @@ from geometry_msgs.msg import TwistStamped
 import math
 
 from twist_controller import Controller
+from geometry_msgs.msg import PoseStamped
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -45,6 +46,18 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+
+
+        #initial section
+        self.current_vel = None
+        self.curr_ang_vel=None
+        self.dbw_enabled = None
+        self.linear_vel = None
+        self.angular_vel = None
+        self.throttle = 0
+        self.steering =0
+        self.brake = 0
+
 
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',SteeringCmd, queue_size=1)
@@ -101,16 +114,8 @@ class DBWNode(object):
         rospy.Subscriber('/twist_cmd',TwistStamped,self.twist_cb)
         rospy.Subscriber('/current_velocity',TwistStamped,self.velocity_ang_cb)
 
+        #rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
 
-        #initial section
-        self.current_vel = None
-        self.curr_ang_vel=None
-        self.dbw_enabled = None
-        self.linear_vel = None
-        self.angular_vel = None
-        self.throttle = 0
-        self.steering =0
-        self.brake = 0
 
 
         self.loop()

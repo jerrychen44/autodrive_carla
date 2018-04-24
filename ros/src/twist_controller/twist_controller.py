@@ -30,9 +30,16 @@ class Controller(object):
         # TODO: Implement
         self.yaw_controller = YawController(wheel_base, steer_ratio, 0.1, max_lat_accel, max_steer_angle)
 
+        #original
         kp = 0.3
         ki = 0.1
         kd = 0.
+
+        #the test lot will keep running.
+        #kp = 2.0
+        #ki = 0.4
+        #kd = 0.1
+
         mn = 0. #Minimum throttle value
         mx = 0.2#Maximum throttle value
         self.throttle_controller = PID(kp,ki,kd,mn,mx)
@@ -57,7 +64,7 @@ class Controller(object):
 
         self.last_time = rospy.get_time()
 
-        pass
+        #pass
 
     # this fun will be call 50Hz, from dbw_node
     def control(self,
@@ -93,6 +100,12 @@ class Controller(object):
         rospy.logwarn("filtered vel: {0}".format(self.vel_lpf.get()))
         rospy.logwarn("dbw_enabled: {0}".format(dbw_enabled))
 
+
+
+
+
+
+
         #use Yaw controller to get the steering
         steering = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
         #rospy.logwarn("steering: {0}\n".format(steering))
@@ -104,7 +117,7 @@ class Controller(object):
             rospy.logwarn("ang_error: {0}".format(ang_error))
 
         if ang_error < 0.05:
-            rospy.logwarn("================================> ANG THE SAME, keep use ths ame steering")
+            rospy.logwarn("================================> ANG THE SAME, keep use ths same steering")
         else:
             rospy.logwarn("================================> ANG NOT THE SAME, use steering * 1.25")
             steering = steering * 1.25
