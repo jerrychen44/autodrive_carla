@@ -66,6 +66,7 @@ class TLDetector(object):
         self.listener = tf.TransformListener()
 
         self.tmp = 0
+        #self.dbw_enabled = None
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)#can be used to determine the vehicle's location.
         sub2 = rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)#provides the complete list of waypoints.
@@ -90,6 +91,8 @@ class TLDetector(object):
         # providing the permanent (x, y) coordinates for each traffic light's stop
         config_string = rospy.get_param("/traffic_light_config")
         self.config = yaml.load(config_string)
+        self.is_sim = self.config["is_sim"]
+        rospy.logwarn("[tl_det] is_sim {}".format(self.is_sim))
 
         #The node should publish the index of the waypoint for nearest upcoming red light's stop line to a single topic:
         '''
@@ -103,9 +106,17 @@ class TLDetector(object):
 
 
 
+        #sub7 = rospy.Subscriber('/vehicle/dbw_enabled',Bool,self.dbw_enabled_cb)
+
+
 
 
         rospy.spin()
+
+
+
+    def dbw_enabled_cb(self,msg):
+        self.dbw_enabled = msg
 
     def pose_cb(self, msg):
         #current car position
@@ -148,14 +159,19 @@ class TLDetector(object):
         #we hope the state can be stable
         if self.state != state:
             self.state_count = 0
+            rospy.logwarn("[tl_det] state switch, {} -> {}, state_count {}".format(self.state,state,self.state_count))
             self.state = state
+
         elif self.state_count >= STATE_COUNT_THRESHOLD: #which means the state is stabled.
             self.last_state = self.state
             #in our case, we only care about the RED light, others light we can keep move.
             light_wp = light_wp if state == TrafficLight.RED else -1
             self.last_wp = light_wp
+            rospy.logwarn("[tl_det] state_count >= STATE_COUNT_THRESHOLD, light_wp {}, state_count {}".format(light_wp,self.state_count))
+
             self.upcoming_red_light_pub.publish(Int32(light_wp))
         else:
+            rospy.logwarn("[tl_det] state_count <= STATE_COUNT_THRESHOLD, keep self.last_wp {}, state_count {}".format(self.last_wp,self.state_count))
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
 
         self.state_count += 1
@@ -207,14 +223,13 @@ class TLDetector(object):
         uint8 YELLOW=1
         uint8 RED=0
         '''
-        use_light_status = 0
+
         light_status=["RED","YELLOW","GREEN","UNKNOWN3","UNKNOWN4"]
 
-        if use_light_status ==1:
+        rospy.logwarn("[tl_det] is_sim {}".format(self.is_sim))
+        if self.is_sim:
             #for simulator testing, just return the light state simulator pass to you directly
-            rospy.logwarn("[light_status,Highway track] get_light_state: {0}".format(light_status[light.state]))
-
-
+            rospy.logwarn("[tl_det] light_status, get_light_state: {0}".format(light_status[light.state]))
             return light.state
         else:
 
@@ -225,15 +240,14 @@ class TLDetector(object):
                 self.prev_light_loc = None
                 return False
             #raw data to RGB8bit
+            rospy.logwarn("[tl_det] Get image BGR 8bit")
+
             cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
-
-
-
             state = self.light_classifier.get_classification(cv_image)
 
 
             #Get classification
-            rospy.logwarn("[has_image,Highway track] get_light_state: {0}".format(light_status[state]))
+            rospy.logwarn("[tl_det] has_image, get_light_state: {0}".format(light_status[state]))
             return state
 
 
@@ -255,32 +269,35 @@ class TLDetector(object):
             #find the car poistion in waht waypoint
             car_position = self.get_closest_waypoint(self.pose.pose.position.x, self.pose.pose.position.y)
 
-        #TODO find the closest visible traffic light (if one exists)
-        # diff inital a max distance here, just like we find the min value as usual
-        diff = len(self.waypoints.waypoints)
-        for i, light in enumerate(self.lights):
-            #Get setop each line waypoint index
-            line = stop_line_positions[i]
-            #this time, find the closest waypoint for traffic light
-            temp_wp_idx = self.get_closest_waypoint(line[0],line[1])
+            #TODO find the closest visible traffic light (if one exists)
+            # diff inital a max distance here, just like we find the min value as usual
+            diff = len(self.waypoints.waypoints)
+            for i, light in enumerate(self.lights):
+                #Get setop each line waypoint index
+                line = stop_line_positions[i]
+                #this time, find the closest waypoint for traffic light
+                temp_wp_idx = self.get_closest_waypoint(line[0],line[1])
 
-            #check which is traffic light x,y clostest with car position and also ahead the car
-            d= temp_wp_idx - car_position
-            #rospy.logwarn("d: {0}".format(d))
-            #rospy.logwarn("diff: {0}".format(diff))
+                #check which is traffic light x,y clostest with car position and also ahead the car
+                d= temp_wp_idx - car_position
+                #rospy.logwarn("d: {0}".format(d))
+                #rospy.logwarn("diff: {0}".format(diff))
 
-            if d >= 0 and d < diff:
-                diff = d
-                closest_light = light
-                line_wp_idx = temp_wp_idx
+                if d >= 0 and d < diff:
+                    diff = d
+                    closest_light = light
+                    line_wp_idx = temp_wp_idx
 
-            #rospy.logwarn("finial diff: {0}".format(diff))
-            #rospy.logwarn("finial line_wp_idx: {0}".format(line_wp_idx))
+                #rospy.logwarn("finial diff: {0}".format(diff))
+                #rospy.logwarn("finial line_wp_idx: {0}".format(line_wp_idx))
 
 
         if closest_light:
             state = self.get_light_state(closest_light)
             return line_wp_idx, state
+        else:
+            rospy.logwarn("[tl_det] closest_light == None, return TrafficLight.UNKNOWN")
+
 
         # should we marked it or not ?
         #self.waypoints = None

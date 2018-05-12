@@ -137,6 +137,7 @@ class WaypointUpdater(object):
             lane.waypoints = base_waypoints
         else:
             #there is a stopline wp indx , and inside our current waypoint list
+            rospy.logwarn("[waypoint_updater] got a stopline waypoint, need decelerate")
             lane.waypoints = self.decelerate_waypoints(base_waypoints, closest_idx)
 
         return lane

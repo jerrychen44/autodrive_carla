@@ -219,7 +219,7 @@ def preprocess_input(image, net_h, net_w):
         new_w = (new_w * net_h)//new_h
         new_h = net_h
 
-    # resize the image to the new size
+    # resize the image to the new size, and BGR to RGB
     resized = cv2.resize(image[:,:,::-1]/255., (new_w, new_h))
 
     # embed the image into the standard letter box

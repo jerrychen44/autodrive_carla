@@ -140,6 +140,7 @@ class Controller(object):
         #some constrain
         # if the target vel is 0, and we are very slow <0.1, set the throttle to 0 directly to stop
         if linear_vel ==0 and current_vel < 0.1:
+            rospy.logwarn("[twist_controller] vel is really small, directly to STOP")
             throttle = 0
             brake = 400 #N*m to hold the car in place if we are stopped at a light. Acceleration 1m/s^2
 
@@ -147,6 +148,8 @@ class Controller(object):
         # we directly stop to add throttle, and get the real brake, because this time
         # the car still moving, we need the real brake result from the vel, and mass, whell radius
         elif throttle < 0.1 and vel_error <0:
+            rospy.logwarn("[twist_controller] slow down")
+
             throttle =0
             #decel is our desired deacceleration
             decel = max(vel_error, self.decel_limit)

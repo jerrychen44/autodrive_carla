@@ -81,13 +81,18 @@ class TLClassifier(object):
         '''
 
 
+        rospy.logwarn ("[tl_det] Before get_yolo_boxes")
 
         tStart = time.time()
         # predict the bounding boxes
         boxes = get_yolo_boxes(self.infer_model, [image], self.net_h, self.net_w, self.model_anchors, self.obj_thresh, self.nms_thresh)[0]
 
         tEnd = time.time()
-        rospy.logwarn ("It cost {} sec".format (tEnd - tStart))
+        rospy.logwarn ("[tl_det] After get_yolo_boxes")
+        rospy.logwarn ("[tl_det] Box detecting num {}".format(len(boxes)))
+
+
+        rospy.logwarn ("[tl_det]It cost {} sec".format (tEnd - tStart))
 
 
         #debug
@@ -96,15 +101,15 @@ class TLClassifier(object):
         state_idx = -99
 
         for w in range(len(boxes)):
-            rospy.logwarn("[Jerry] boxes {}, {}, {}".format(boxes[w].classes,boxes[w].score,boxes[w].label))
+            rospy.logwarn("[tl_det] boxes {}, {}, {}".format(boxes[w].classes,boxes[w].score,boxes[w].label))
             state_idx = 0
             for class_prob in boxes[w].classes:
-                rospy.logwarn("[Jerry] class_prob {}, state_prob {}".format(class_prob,state_prob))
+                rospy.logwarn("[tl_det] class_prob {}, state_prob {}".format(class_prob,state_prob))
 
                 if class_prob > state_prob and class_prob != 0.0:
                     state_prob = class_prob
                     state = state_idx
-                    rospy.logwarn("[Jerry] state {}".format(state))
+                    rospy.logwarn("[tl_det] state {}".format(state))
 
 
                 state_idx = state_idx +1
