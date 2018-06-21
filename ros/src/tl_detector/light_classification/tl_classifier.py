@@ -35,7 +35,7 @@ However, you can still reference this topic in real life to get the 3D world pos
 class TLClassifier(object):
     def __init__(self):
         #TODO load classifier
-        rospy.logwarn("[traffic classifier] TLClassifier INIT")
+        rospy.logwarn("[traffic classifier] 0612, TLClassifier INIT")
         #clear_session()
 
         ###############################
@@ -51,10 +51,15 @@ class TLClassifier(object):
         ###############################
         os.environ['CUDA_VISIBLE_DEVICES'] = "0"
         pwd = os.getcwd()
+        rospy.logwarn("[traffic classifier] load_model ++ INIT")
 
         self.infer_model = load_model(pwd+"/light_classification/model/tl.h5")
+        rospy.logwarn("[traffic classifier] load_model -- INIT")
+
         #workaround for keras deploy issue
+        rospy.logwarn("[traffic classifier] first predict ++ INIT")
         self.infer_model.predict(np.zeros((1, self.net_h, self.net_w, 3)))
+        rospy.logwarn("[traffic classifier] first predict -- INIT")
 
         self.model_anchors = [17,18, 28,24, 36,34, 42,44, 56,51, 72,66, 90,95, 92,154, 139,281]
         self.model_labels = ["red","yellow","green"]

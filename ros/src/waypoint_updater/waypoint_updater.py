@@ -146,6 +146,7 @@ class WaypointUpdater(object):
     def decelerate_waypoints(self, waypoints, closest_idx):
         #we don't directy modify the original base_waypoint
         #it will loss the info, when we come back the same place, that will mass up.
+        rospy.logwarn("[waypoint_updater] -2 stop_idx")
 
         # we creating a new wapoint list
         temp = []

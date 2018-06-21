@@ -50,6 +50,8 @@ class TLDetector(object):
 
         self.pose = None
         self.waypoints = None
+        self.waypoints_2d = None
+        self.waypoint_tree = None
         self.camera_image = None
         self.lights = []
 
@@ -58,14 +60,12 @@ class TLDetector(object):
         self.last_wp = -1
         self.state_count = 0
 
-        self.waypoints_2d = None
-        self.waypoint_tree = None
 
         self.bridge = CvBridge()
         self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
 
-        self.tmp = 0
+        #self.tmp = 0
         #self.dbw_enabled = None
 
         sub1 = rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)#can be used to determine the vehicle's location.
@@ -115,8 +115,8 @@ class TLDetector(object):
 
 
 
-    def dbw_enabled_cb(self,msg):
-        self.dbw_enabled = msg
+    #def dbw_enabled_cb(self,msg):
+    #    self.dbw_enabled = msg.data
 
     def pose_cb(self, msg):
         #current car position
@@ -145,6 +145,8 @@ class TLDetector(object):
             msg (Image): image from car-mounted camera
 
         """
+        rospy.logwarn("[tl_det] image_cb INININININININININININ")
+
         self.has_image = True
         self.camera_image = msg
         light_wp, state = self.process_traffic_lights()
@@ -189,6 +191,9 @@ class TLDetector(object):
         #TODO implement
         closest_idx = self.waypoint_tree.query([x,y],1)[1]
 
+
+        #0530 marked
+        '''
         #check if closeset is ahead or behind vehicle
         closest_coord = self.waypoints_2d[closest_idx]
         prev_coord = self.waypoints_2d[closest_idx-1]
@@ -205,6 +210,7 @@ class TLDetector(object):
         # use the next point as closest point
         if val > 0:
             closest_idx = (closest_idx +1) % len(self.waypoints_2d)
+        '''
         return closest_idx
 
     def get_light_state(self, light):
@@ -290,13 +296,17 @@ class TLDetector(object):
 
                 #rospy.logwarn("finial diff: {0}".format(diff))
                 #rospy.logwarn("finial line_wp_idx: {0}".format(line_wp_idx))
+        else:
+            rospy.logwarn("[tl_det] self.pose != True")
 
 
         if closest_light:
+            rospy.logwarn("[tl_det] get closest_light, to get_light_state")
+
             state = self.get_light_state(closest_light)
             return line_wp_idx, state
         else:
-            rospy.logwarn("[tl_det] closest_light == None, return TrafficLight.UNKNOWN")
+            rospy.logwarn("[tl_det] closest_light == None, return light_wp = -1, TrafficLight.UNKNOWN")
 
 
         # should we marked it or not ?

@@ -9,6 +9,8 @@ import math
 from twist_controller import Controller
 from geometry_msgs.msg import PoseStamped
 
+from sensor_msgs.msg import Image
+
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
 
@@ -58,7 +60,8 @@ class DBWNode(object):
         self.steering =0
         self.brake = 0
 
-
+        #for sync
+        self.get_first_image = False
 
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',SteeringCmd, queue_size=1)
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',ThrottleCmd, queue_size=1)
@@ -116,6 +119,8 @@ class DBWNode(object):
 
         #rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
 
+        #for sync img and car move
+        rospy.Subscriber('/image_color', Image, self.get_first_image_cb)
 
 
         self.loop()
@@ -139,15 +144,28 @@ class DBWNode(object):
                                                                                     self.curr_ang_vel,
                                                                                     self.dbw_enabled,
                                                                                     self.linear_vel,
-                                                                                    self.angular_vel)
+                                                                                    self.angular_vel,
+                                                                                    self.get_first_image)
+
+
+
             if self.dbw_enabled:
+                rospy.logwarn("dbw_enabled: {0}, and publishing".format(self.dbw_enabled))
+                #rospy.logwarn("get_first_image: {0}, and publishing".format(self.get_first_image))
+
                 self.publish(self.throttle, self.brake, self.steering)
 
             rate.sleep()
 
     def dbw_enabled_cb(self,msg):
-        self.dbw_enabled = msg
+        self.dbw_enabled = msg.data
 
+
+    def get_first_image_cb(self, msg):
+
+        rospy.logwarn("[dbw_node] get_first_image_cb INININININININININININ")
+
+        self.get_first_image = True
 
     def twist_cb(self,msg):
         '''
@@ -167,6 +185,7 @@ class DBWNode(object):
             float64 z -->this
 
         '''
+        #target vel
         self.linear_vel = msg.twist.linear.x
         self.angular_vel = msg.twist.angular.z
 
