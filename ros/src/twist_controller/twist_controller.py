@@ -28,6 +28,16 @@ class Controller(object):
                 max_steer_angle
                 ):
         # TODO: Implement
+
+        rospy.logwarn("[Controller Init] vehicle_mass: {0}".format(vehicle_mass))
+        rospy.logwarn("[Controller Init] decel_limit: {0}".format(decel_limit))
+        rospy.logwarn("[Controller Init] accel_limit: {0}".format(accel_limit))
+        rospy.logwarn("[Controller Init] wheel_radius: {0}".format(wheel_radius))
+
+
+
+
+
         min_speed = 0.1
         self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
 
@@ -66,8 +76,9 @@ class Controller(object):
 
 
         min_throttle = 0.0 # Minimum throttle value
-        max_throttle = 0.2 # Maximum throttle value (should be OK for simulation, not for Carla!)
+        #max_throttle = 0.2 # Maximum throttle value (should be OK for simulation, not for Carla!)
         #max_throttle = 0.5*accel_limit
+        max_throttle = accel_limit
         #self.throttle_controller =PID(2.0, 0.4, 0.1, min_throttle, max_throttle)
         self.throttle_controller = PID(throttle_kp, throttle_ki, throttle_kd, min_throttle, max_throttle)
 
@@ -125,8 +136,8 @@ class Controller(object):
                 current_vel,
                 curr_ang_vel,
                 dbw_enabled,
-                linear_vel,
-                angular_vel,
+                target_vel,
+                target_ang_vel,
                 get_first_image
                         ):
         # TODO: Change the arg, kwarg list to suit your needs
@@ -146,18 +157,18 @@ class Controller(object):
 
 
         if get_first_image == False:
-            rospy.logwarn("get_first_image: {0}, return 0.,450.,0.".format(get_first_image))
-            return 0.,450.,0.
+            rospy.logwarn("get_first_image: {0}, return 0.,750.,0.".format(get_first_image))
+            return 0.,750.,0.
 
         #so, if dbw is enable
 
         current_vel = self.vel_lpf.filt(current_vel)
 
-        rospy.logwarn("Target vel: {0}".format(linear_vel))
-        rospy.logwarn("Target angular vel: {0}\n".format(angular_vel))
+        rospy.logwarn("Target vel: {0}".format(target_vel))
+        rospy.logwarn("Target angular vel: {0}\n".format(target_ang_vel))
 
         rospy.logwarn("current_vel: {0}".format(current_vel))
-        rospy.logwarn("current angular_vel: {0}".format(curr_ang_vel))
+        rospy.logwarn("current target_ang_vel: {0}".format(curr_ang_vel))
 
         rospy.logwarn("filtered vel: {0}".format(self.vel_lpf.get()))
 
@@ -177,20 +188,20 @@ class Controller(object):
         # steering
         ############
         #use Yaw controller to get the steering
-        steering_base = self.yaw_controller.get_steering(linear_vel, angular_vel, current_vel)
+        steering_base = self.yaw_controller.get_steering(target_vel, target_ang_vel, current_vel)
         #rospy.logwarn("steering: {0}\n".format(steering))
         #0530
-        angular_vel_error = angular_vel - curr_ang_vel
-        steering_correction = self.steering_controller.step(angular_vel_error, sample_time)
+        target_ang_vel_error = target_ang_vel - curr_ang_vel
+        steering_correction = self.steering_controller.step(target_ang_vel_error, sample_time)
         steering_total = steering_base + steering_correction
         steering = max(min(self.max_steer_angle, steering_total), -self.max_steer_angle)
         ##############
         # throttle
         ##############
-        #get the vel diff erro between the the vel we want to be (linear_vel) v.s. the current_vel
-        # the linear_vel comes from twist_cmd, which is the waypoint_follower published, is the target vel
+        #get the vel diff erro between the the vel we want to be (target_vel) v.s. the current_vel
+        # the target_vel comes from twist_cmd, which is the waypoint_follower published, is the target vel
         # from waypoint updater
-        vel_error = linear_vel - current_vel
+        vel_error = target_vel - current_vel
         self.last_vel = current_vel
         #use PID controller to get the proper throttle under the vel_error and the sample time
         throttle = self.throttle_controller.step(vel_error, sample_time)
@@ -202,27 +213,51 @@ class Controller(object):
         ################
         #some constrain
         ################
+        rospy.logwarn("[some constrain] target_vel: {0}".format(target_vel))
+        rospy.logwarn("[some constrain] current_vel: {0}".format(current_vel))
+        rospy.logwarn("[some constrain] vel_error: {0}".format(vel_error))
+        rospy.logwarn("[some constrain] throttle: {0}".format(throttle))
         # if the target vel is 0, and we are very slow <0.1, set the throttle to 0 directly to stop
-        if linear_vel ==0. and current_vel < 0.1:
-            rospy.logwarn("[twist_controller] vel is really small, directly to STOP")
+        if target_vel == 0. and current_vel < 0.1:
+            rospy.logwarn("[twist_controller] target vel =0, and current vel is really small, directly STOP")
             throttle = 0
-            brake = 450 #N*m to hold the car in place if we are stopped at a light. Acceleration 1m/s^2
+            brake = 750 #N*m to hold the car in place if we are stopped at a light. Acceleration 1m/s^2
+            rospy.logwarn("[directly STOP] throttle: {0}".format(throttle))
+            rospy.logwarn("[directly STOP] brake: {0}".format(brake))
+            rospy.logwarn("[directly STOP] steering: {0}".format(steering))
 
         # vel_erro < 0 means the current car vel too fast than we want, and we still put small throttle
         # we directly stop to add throttle, and get the real brake, because this time
         # the car still moving, we need the real brake result from the vel, and mass, whell radius
-        elif throttle < 0.1 and vel_error <0:
-        #elif vel_error <0:
+        #elif throttle < 0.1 and vel_error <0:
+        elif vel_error < 0:
 
-            rospy.logwarn("[twist_controller] slow down")
+            rospy.logwarn("[twist_controller] slowing down")
 
             throttle =0
             #decel is our desired deacceleration
             decel = max(vel_error, self.decel_limit)
+
+            rospy.logwarn("[slowing down] self.decel_limit: {0}".format(self.decel_limit))
+            rospy.logwarn("[slowing down] vel_error: {0}".format(vel_error))
+            rospy.logwarn("[slowing down] decel: {0}".format(decel))
+
             # vehicle_mass in kilograms, wheel_radius in meters
             # use abs is because the simluator, the de-acceleration should be negative, but
             # the simulator get the positive number as the brake value
-            brake = abs(decel) * self.vehicle_mass * self.wheel_radius # Torque N*m
+            #brake = abs(decel) * self.vehicle_mass * self.wheel_radius # Torque N*m
+            brake = abs(decel) * (self.vehicle_mass + self.fuel_capacity * GAS_DENSITY) * self.wheel_radius
+
+            rospy.logwarn("[slowing down] self.wheel_radius: {0}".format(self.wheel_radius))
+            rospy.logwarn("[slowing down] self.vehicle_mass: {0}".format(self.vehicle_mass))
+
+            rospy.logwarn("[slowing down] throttle: {0}".format(throttle))
+            rospy.logwarn("[slowing down] brake: {0}".format(brake))
+            rospy.logwarn("[slowing down] steering: {0}".format(steering))
+        else:
+            rospy.logwarn("[donothing] throttle: {0}".format(throttle))
+            rospy.logwarn("[donothing] brake: {0}".format(brake))
+            rospy.logwarn("[donothing] steering: {0}".format(steering))
 
 
         # Return throttle(min is 0.1 m/s), brake, steer

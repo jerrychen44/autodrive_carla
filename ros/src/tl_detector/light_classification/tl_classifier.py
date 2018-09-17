@@ -35,7 +35,9 @@ However, you can still reference this topic in real life to get the 3D world pos
 class TLClassifier(object):
     def __init__(self):
         #TODO load classifier
-        rospy.logwarn("[traffic classifier] 0612, TLClassifier INIT")
+        rospy.logwarn("[traffic classifier] 0908, TLClassifier INIT")
+        rospy.logwarn("[traffic classifier] change brake = 750, accel_limit = 0.05, decel_limit = -5")
+
         #clear_session()
 
         ###############################
@@ -95,8 +97,6 @@ class TLClassifier(object):
         tEnd = time.time()
         rospy.logwarn ("[tl_det] After get_yolo_boxes")
         rospy.logwarn ("[tl_det] Box detecting num {}".format(len(boxes)))
-
-
         rospy.logwarn ("[tl_det]It cost {} sec".format (tEnd - tStart))
 
 
@@ -106,6 +106,7 @@ class TLClassifier(object):
         state_idx = -99
 
         for w in range(len(boxes)):
+            rospy.logwarn ("[tl_det] Box num {}".format(w))
             rospy.logwarn("[tl_det] boxes {}, {}, {}".format(boxes[w].classes,boxes[w].score,boxes[w].label))
             state_idx = 0
             for class_prob in boxes[w].classes:

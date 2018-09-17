@@ -1,0 +1,6 @@
+cd ros
+
+#before catkin_make , make sure delete the "build" and "devel" folder 
+catkin_make
+source devel/setup.bash
+roslaunch launch/styx.launch

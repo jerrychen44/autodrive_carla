@@ -67,7 +67,8 @@ class WaypointUpdater(object):
         rate=rospy.Rate(50)# 50hz, change to 30 later in driver by wire
         while not rospy.is_shutdown():
             # if there are pose data in base_waypoits and the rospy not shutdown....
-            if self.pose and self.base_waypoints:
+            #if self.pose and self.base_waypoints:
+            if not None in (self.pose , self.base_waypoints, self.waypoint_tree):
                 '''
                 #first version, move to publish_waypoionts
                 #Get closest waypoint
@@ -75,6 +76,7 @@ class WaypointUpdater(object):
                 self.publish_waypoints(closest_waypoint_idx)
                 '''
                 self.publish_waypoints()
+
             rate.sleep()
 
 
@@ -129,8 +131,14 @@ class WaypointUpdater(object):
 
         #Get closest waypoint ahead the car
         closest_idx = self.get_closest_waypoint_idx()
+
         farthest_idx = closest_idx + LOOKAHEAD_WPS
         base_waypoints = self.base_waypoints.waypoints[closest_idx: farthest_idx]
+
+        rospy.logwarn("[waypoint_updater] car closest_idx: {0}".format(closest_idx))
+        rospy.logwarn("[waypoint_updater] car farthest_idx: {0}".format(farthest_idx))
+        rospy.logwarn("[waypoint_updater] car self.stopline_wp_idx: {0}".format(self.stopline_wp_idx))
+
 
         if self.stopline_wp_idx == -1 or (self.stopline_wp_idx >= farthest_idx):
             #in this case, which means we didn't detect the traffic light in our looking up waypoint list
@@ -146,10 +154,11 @@ class WaypointUpdater(object):
     def decelerate_waypoints(self, waypoints, closest_idx):
         #we don't directy modify the original base_waypoint
         #it will loss the info, when we come back the same place, that will mass up.
-        rospy.logwarn("[waypoint_updater] -2 stop_idx")
+        rospy.logwarn("[waypoint_updater] use -2 before stop_idx")
 
         # we creating a new wapoint list
         temp = []
+        vel_tmp = []
         #walk through the all waypoints[closest_waypoint_idx: farthest_idx]
         for i , wp in enumerate(waypoints):
 
@@ -161,16 +170,21 @@ class WaypointUpdater(object):
             stop_idx = max(self.stopline_wp_idx - closest_idx -2, 0)
             #get the distance between waypoints[i] and waypoints[stop_idx]
             dist = self.distance(waypoints, i ,stop_idx)
-            #use sqrt the let the vel dropping really sharp when the
+            #use sqrt that let the vel dropping really sharp when the
             #dist is really close the traffic light
             vel = math.sqrt(2*MAX_DECEL*dist)
             if vel < 1:
                 vel = 0
 
+
             #assign the vel for each wapoint
             #if the vel small then original vel, then we use the small one.
             p.twist.twist.linear.x = min(vel, wp.twist.twist.linear.x)
+            vel_tmp.append(min(vel, wp.twist.twist.linear.x))
             temp.append(p)
+
+        rospy.logwarn("[decelerate_waypoints] vel_tmp: {0}".format(vel_tmp[0:40]))
+        #rospy.logwarn("[decelerate_waypoints] temp: {0}".format(temp[0:40]))
         return temp
 
 
