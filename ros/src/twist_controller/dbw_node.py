@@ -54,8 +54,8 @@ class DBWNode(object):
         self.current_vel = None
         self.curr_ang_vel=None
         self.dbw_enabled = None
-        self.linear_vel = None
-        self.angular_vel = None
+        self.target_vel = None
+        self.target_ang_vel = None
         self.throttle = 0
         self.steering =0
         self.brake = 0
@@ -114,7 +114,7 @@ class DBWNode(object):
 
         '''
         rospy.Subscriber('/vehicle/dbw_enabled',Bool,self.dbw_enabled_cb)
-        rospy.Subscriber('/twist_cmd',TwistStamped,self.twist_cb)
+        rospy.Subscriber('/twist_cmd',TwistStamped,self.target_cb)
         rospy.Subscriber('/current_velocity',TwistStamped,self.velocity_ang_cb)
 
         #rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
@@ -139,12 +139,12 @@ class DBWNode(object):
             #   self.publish(throttle, brake, steer)
 
 
-            if not None in (self.current_vel, self.linear_vel, self.angular_vel):
+            if not None in (self.current_vel, self.target_vel, self.target_ang_vel):
                 self.throttle, self.brake, self.steering = self.controller.control(self.current_vel,
                                                                                     self.curr_ang_vel,
                                                                                     self.dbw_enabled,
-                                                                                    self.linear_vel,
-                                                                                    self.angular_vel,
+                                                                                    self.target_vel,
+                                                                                    self.target_ang_vel,
                                                                                     self.get_first_image)
 
 
@@ -167,7 +167,7 @@ class DBWNode(object):
 
         self.get_first_image = True
 
-    def twist_cb(self,msg):
+    def target_cb(self,msg):
         '''
         cmd: rosmsg info geometry_msgs/TwistStamped
         std_msgs/Header header
@@ -186,8 +186,8 @@ class DBWNode(object):
 
         '''
         #target vel
-        self.linear_vel = msg.twist.linear.x
-        self.angular_vel = msg.twist.angular.z
+        self.target_vel = msg.twist.linear.x
+        self.target_ang_vel = msg.twist.angular.z
 
 
     def velocity_ang_cb(self,msg):

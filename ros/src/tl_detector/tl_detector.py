@@ -169,11 +169,11 @@ class TLDetector(object):
             #in our case, we only care about the RED light, others light we can keep move.
             light_wp = light_wp if state == TrafficLight.RED else -1
             self.last_wp = light_wp
-            rospy.logwarn("[tl_det] state_count >= STATE_COUNT_THRESHOLD, light_wp {}, state_count {}".format(light_wp,self.state_count))
+            rospy.logwarn("[tl_det] state_count >= STATE_COUNT_THRESHOLD, use light_wp {}, state_count {}".format(light_wp,self.state_count))
 
             self.upcoming_red_light_pub.publish(Int32(light_wp))
         else:
-            rospy.logwarn("[tl_det] state_count <= STATE_COUNT_THRESHOLD, keep self.last_wp {}, state_count {}".format(self.last_wp,self.state_count))
+            rospy.logwarn("[tl_det] state_count <= STATE_COUNT_THRESHOLD, use last_wp {}, state_count {}".format(self.last_wp,self.state_count))
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
 
         self.state_count += 1
